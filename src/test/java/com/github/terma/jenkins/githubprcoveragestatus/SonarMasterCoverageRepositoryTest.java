@@ -83,7 +83,7 @@ public class SonarMasterCoverageRepositoryTest {
     private void givenCoverageRepository(final String login, String password) {
         buildLogOutputStream = new ByteArrayOutputStream();
         sonarMasterCoverageRepository = new SonarMasterCoverageRepository("http://localhost:" + wireMockRule.port(),
-                login, password, new PrintStream(buildLogOutputStream, true));
+                login, password, new PrintStream(buildLogOutputStream, true), null);
     }
 
     private void givenProjectResponseWithSingleMatch(final String login, String password) throws IOException {

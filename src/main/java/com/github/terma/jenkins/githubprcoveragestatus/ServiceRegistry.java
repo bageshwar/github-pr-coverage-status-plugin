@@ -19,6 +19,8 @@ package com.github.terma.jenkins.githubprcoveragestatus;
 
 import java.io.PrintStream;
 
+import static com.github.terma.jenkins.githubprcoveragestatus.CompareCoverageAction.BUILD_LOG_PREFIX;
+
 public class ServiceRegistry {
 
     private static MasterCoverageRepository masterCoverageRepository;
@@ -26,23 +28,23 @@ public class ServiceRegistry {
     private static SettingsRepository settingsRepository;
     private static PullRequestRepository pullRequestRepository;
 
-    public static MasterCoverageRepository getMasterCoverageRepository(PrintStream buildLog, final String login, final String password) {
+    public static MasterCoverageRepository getMasterCoverageRepository(PrintStream buildLog, final String login, final String password, String sonarProjectKey) {
         if (masterCoverageRepository != null) return masterCoverageRepository;
 
         if (Configuration.isUseSonarForMasterCoverage()) {
             final String sonarUrl = Configuration.getSonarUrl();
             if (login != null && password != null) {
-                buildLog.println("take master coverage from sonar by login/password");
-                return new SonarMasterCoverageRepository(sonarUrl, login, password, buildLog);
+                buildLog.println(BUILD_LOG_PREFIX + "take master coverage from sonar by login/password");
+                return new SonarMasterCoverageRepository(sonarUrl, login, password, buildLog, sonarProjectKey);
             }
             if (Configuration.getSonarToken() != null) {
-                buildLog.println("take master coverage from sonar by token");
-                return new SonarMasterCoverageRepository(sonarUrl, Configuration.getSonarToken(), "", buildLog);
+                buildLog.println(BUILD_LOG_PREFIX + "take master coverage from sonar by token");
+                return new SonarMasterCoverageRepository(sonarUrl, Configuration.getSonarToken(), "", buildLog, sonarProjectKey);
             }
-            buildLog.println("take master coverage from sonar by login/password");
-            return new SonarMasterCoverageRepository(sonarUrl, Configuration.getSonarLogin(), Configuration.getSonarPassword(), buildLog);
+            buildLog.println(BUILD_LOG_PREFIX + "take master coverage from sonar by login/password");
+            return new SonarMasterCoverageRepository(sonarUrl, Configuration.getSonarLogin(), Configuration.getSonarPassword(), buildLog, sonarProjectKey);
         } else {
-            buildLog.println("use default coverage repo");
+            buildLog.println(BUILD_LOG_PREFIX + "use default coverage repo");
             return new BuildMasterCoverageRepository(buildLog);
         }
     }

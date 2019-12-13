@@ -15,4 +15,9 @@
             <f:option value="statusCheck">${%Status Check}</f:option>
           </select>
         </f:entry>
+
+        <f:entry title="${%Sonarqube Project Key}" field="sonarProjectKey">
+              <f:textbox default=""/>
+        </f:entry>
+
 </j:jelly>

@@ -65,6 +65,7 @@ public class CompareCoverageAction extends Recorder implements SimpleBuildStep {
     private Map<String, String> scmVars;
     private String jacocoCoverageCounter;
     private String publishResultAs;
+    private String sonarProjectKey;
 
     @DataBoundConstructor
     public CompareCoverageAction() {
@@ -100,6 +101,15 @@ public class CompareCoverageAction extends Recorder implements SimpleBuildStep {
         this.jacocoCoverageCounter = jacocoCoverageCounter;
     }
 
+    @DataBoundSetter
+    public void setSonarProjectKey(String sonarProjectKey){
+        this.sonarProjectKey = sonarProjectKey;
+    }
+
+    public String getSonarProjectKey() {
+        return sonarProjectKey;
+    }
+
     public String getPublishResultAs() {
         return publishResultAs;
     }
@@ -133,7 +143,7 @@ public class CompareCoverageAction extends Recorder implements SimpleBuildStep {
 
         buildLog.println(BUILD_LOG_PREFIX + "getting master coverage...");
         MasterCoverageRepository masterCoverageRepository = ServiceRegistry
-                .getMasterCoverageRepository(buildLog, sonarLogin, sonarPassword);
+                .getMasterCoverageRepository(buildLog, sonarLogin, sonarPassword, sonarProjectKey);
         final GHRepository gitHubRepository = ServiceRegistry.getPullRequestRepository().getGitHubRepository(gitUrl);
         final float masterCoverage = masterCoverageRepository.get(gitUrl);
         buildLog.println(BUILD_LOG_PREFIX + "master coverage: " + masterCoverage);

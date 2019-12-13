@@ -20,6 +20,7 @@ package com.github.terma.jenkins.githubprcoveragestatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.auth.BasicScheme;
 import org.apache.commons.httpclient.methods.GetMethod;
@@ -44,14 +45,16 @@ public class SonarMasterCoverageRepository implements MasterCoverageRepository {
 
     private final String sonarUrl;
     private final String login;
+    private String sonarProjectKey;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper().disable(FAIL_ON_UNKNOWN_PROPERTIES);
     private PrintStream buildLog;
 
-    public SonarMasterCoverageRepository(String sonarUrl, String login, String password, PrintStream buildLog) {
+    public SonarMasterCoverageRepository(String sonarUrl, String login, String password, PrintStream buildLog, String sonarProjectKey) {
         this.sonarUrl = sonarUrl;
         this.login = login;
         this.buildLog = buildLog;
+        this.sonarProjectKey = sonarProjectKey;
         httpClient = new HttpClient();
         if (login != null) {
             httpClient.getState().setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(login, password));
@@ -60,17 +63,46 @@ public class SonarMasterCoverageRepository implements MasterCoverageRepository {
 
     @Override
     public float get(final String gitHubRepoUrl) {
-        final String repoName = GitUtils.getRepoName(gitHubRepoUrl);
-        log("Getting coverage for Git Repo URL: %s by repo name: %s", gitHubRepoUrl, repoName);
         try {
-            final SonarProject sonarProject = getSonarProject(repoName);
-            return getCoverageMeasure(sonarProject);
+            if (Strings.isNullOrEmpty(sonarProjectKey)) {
+                return getCoverageByGithubRepoUrl(gitHubRepoUrl);
+            } else {
+                return getCoverageBySonarProjectKey(sonarProjectKey);
+            }
         } catch (Exception e) {
             log("Failed to get master coverage for %s", gitHubRepoUrl);
             log("Exception message '%s'", e);
             e.printStackTrace(buildLog);
             return 0;
         }
+    }
+
+    /**
+     * Get coverage by the passed github url. The url is used to fetch the sonarqube project key
+     * via a search api exposed by sonarqube.
+     * @param gitHubRepoUrl
+     * @return
+     * @throws SonarProjectRetrievalException
+     * @throws SonarCoverageMeasureRetrievalException
+     */
+    private float getCoverageByGithubRepoUrl(final String gitHubRepoUrl) throws SonarProjectRetrievalException, SonarCoverageMeasureRetrievalException {
+        final String repoName = GitUtils.getRepoName(gitHubRepoUrl);
+        log("Getting coverage for Git Repo URL: %s by repo name: %s", gitHubRepoUrl, repoName);
+        final SonarProject sonarProject = getSonarProject(repoName);
+        return getCoverageMeasure(sonarProject);
+    }
+
+    /**
+     * To find the coverage when the sonaqube project key is known in advance
+     * @param sonarProjectKey
+     * @return
+     * @throws SonarCoverageMeasureRetrievalException
+     */
+    private float getCoverageBySonarProjectKey(final String sonarProjectKey) throws SonarCoverageMeasureRetrievalException {
+        final SonarProject sonarProject = new SonarProject();
+        sonarProject.setKey(sonarProjectKey);
+        log("Getting coverage for sonar project: %s", sonarProjectKey);
+        return getCoverageMeasure(sonarProject);
     }
 
     /**
@@ -140,7 +172,7 @@ public class SonarMasterCoverageRepository implements MasterCoverageRepository {
         }
     }
 
-    private static class SonarProject {
+    protected static class SonarProject {
         @JsonProperty("k")
         String key;
 
