@@ -20,4 +20,8 @@
               <f:textbox default=""/>
         </f:entry>
 
+        <f:entry title="${%Sonarqube Style Coverage}" field="useSonarStyleCoverage">
+              <f:checkbox />
+        </f:entry>
+
 </j:jelly>

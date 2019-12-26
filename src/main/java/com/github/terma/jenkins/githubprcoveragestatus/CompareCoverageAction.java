@@ -66,6 +66,7 @@ public class CompareCoverageAction extends Recorder implements SimpleBuildStep {
     private String jacocoCoverageCounter;
     private String publishResultAs;
     private String sonarProjectKey;
+    private boolean useSonarStyleCoverage;
 
     @DataBoundConstructor
     public CompareCoverageAction() {
@@ -104,6 +105,11 @@ public class CompareCoverageAction extends Recorder implements SimpleBuildStep {
     @DataBoundSetter
     public void setSonarProjectKey(String sonarProjectKey){
         this.sonarProjectKey = sonarProjectKey;
+    }
+
+    @DataBoundSetter
+    public void setUseSonarStyleCoverage(boolean useSonarStyleCoverage){
+        this.useSonarStyleCoverage = useSonarStyleCoverage;
     }
 
     public String getSonarProjectKey() {
@@ -148,9 +154,9 @@ public class CompareCoverageAction extends Recorder implements SimpleBuildStep {
         final float masterCoverage = masterCoverageRepository.get(gitUrl);
         buildLog.println(BUILD_LOG_PREFIX + "master coverage: " + masterCoverage);
 
-        buildLog.println(BUILD_LOG_PREFIX + "collecting coverage...");
-        final float coverage = ServiceRegistry.getCoverageRepository(settingsRepository.isDisableSimpleCov(),
-                jacocoCoverageCounter).get(workspace);
+        buildLog.println(BUILD_LOG_PREFIX + "collecting coverage. SonarStyle: " + useSonarStyleCoverage);
+        final float coverage = ServiceRegistry.getCoverageRepository(listener, settingsRepository.isDisableSimpleCov(),
+                jacocoCoverageCounter, useSonarStyleCoverage).get(workspace);
         buildLog.println(BUILD_LOG_PREFIX + "build coverage: " + coverage);
 
         final Message message = new Message(coverage, masterCoverage);

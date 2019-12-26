@@ -19,6 +19,8 @@ package com.github.terma.jenkins.githubprcoveragestatus;
 
 import hudson.FilePath;
 import hudson.Util;
+import hudson.model.TaskListener;
+import hudson.remoting.RemoteOutputStream;
 import hudson.remoting.VirtualChannel;
 import jenkins.MasterToSlaveFileCallable;
 import org.apache.tools.ant.DirectoryScanner;
@@ -26,6 +28,7 @@ import org.apache.tools.ant.types.FileSet;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,10 +37,14 @@ final class GetCoverageCallable extends MasterToSlaveFileCallable<Float> impleme
 
     private final boolean disableSimpleCov;
     private String jacocoCounterType = "";
+    private boolean useSonarStyleCoverage;
+    private TaskListener taskListener;
 
-    GetCoverageCallable(final boolean disableSimpleCov, final String jacocoCounterType) {
+    GetCoverageCallable(TaskListener taskListener, final boolean disableSimpleCov, final String jacocoCounterType, boolean useSonarStyleCoverage) {
+        this.taskListener = taskListener;
         this.disableSimpleCov = disableSimpleCov;
         this.jacocoCounterType = jacocoCounterType;
+        this.useSonarStyleCoverage = useSonarStyleCoverage;
     }
 
     private List<Float> getFloats(File ws, String path, CoverageReportParser parser) {
@@ -56,17 +63,18 @@ final class GetCoverageCallable extends MasterToSlaveFileCallable<Float> impleme
         if (workspace == null) {
             throw new IllegalArgumentException("Workspace should not be null!");
         }
-        return workspace.act(new GetCoverageCallable(disableSimpleCov, jacocoCounterType));
+        return workspace.act(new GetCoverageCallable(taskListener, disableSimpleCov, jacocoCounterType, useSonarStyleCoverage));
     }
 
     @Override
     public Float invoke(final File ws, final VirtualChannel channel) throws IOException {
+        OutputStream ros = new RemoteOutputStream(taskListener.getLogger());
         final List<Float> cov = new ArrayList<Float>();
         cov.addAll(getFloats(ws, "**/cobertura.xml", new CoberturaParser()));
         cov.addAll(getFloats(ws, "**/cobertura-coverage.xml", new CoberturaParser()));
-        cov.addAll(getFloats(ws, "**/jacoco.xml", new JacocoParser(jacocoCounterType)));
+        cov.addAll(getFloats(ws, "**/jacoco.xml", new JacocoParser(ros, jacocoCounterType, useSonarStyleCoverage)));
         //default for gradle
-        cov.addAll(getFloats(ws, "**/jacocoTestReport.xml", new JacocoParser(jacocoCounterType)));
+        cov.addAll(getFloats(ws, "**/jacocoTestReport.xml", new JacocoParser(ros, jacocoCounterType, useSonarStyleCoverage)));
         cov.addAll(getFloats(ws, "**/clover.xml", new CloverParser()));
         if (!disableSimpleCov) {
             cov.addAll(getFloats(ws, "**/coverage.json", new SimpleCovParser()));

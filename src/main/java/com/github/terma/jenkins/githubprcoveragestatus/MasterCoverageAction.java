@@ -53,6 +53,7 @@ public class MasterCoverageAction extends Recorder implements SimpleBuildStep {
 
     private Map<String, String> scmVars;
     private String jacocoCounterType;
+    private boolean useSonarStyleCoverage;
 
     @DataBoundConstructor
     public MasterCoverageAction() {
@@ -74,6 +75,11 @@ public class MasterCoverageAction extends Recorder implements SimpleBuildStep {
         this.jacocoCounterType = jacocoCounterType;
     }
 
+    @DataBoundSetter
+    public void setUseSonarStyleCoverage(boolean useSonarStyleCoverage){
+        this.useSonarStyleCoverage = useSonarStyleCoverage;
+    }
+
     public String getJacocoCounterType() {
         return jacocoCounterType;
     }
@@ -89,7 +95,7 @@ public class MasterCoverageAction extends Recorder implements SimpleBuildStep {
 
         final boolean disableSimpleCov = ServiceRegistry.getSettingsRepository().isDisableSimpleCov();
         final String jacocoCounterType = this.jacocoCounterType;
-        final float masterCoverage = ServiceRegistry.getCoverageRepository(disableSimpleCov, jacocoCounterType)
+        final float masterCoverage = ServiceRegistry.getCoverageRepository(listener, disableSimpleCov, jacocoCounterType, useSonarStyleCoverage)
                 .get(workspace);
         buildLog.println("Master coverage " + Percent.toWholeString(masterCoverage));
         Configuration.setMasterCoverage(gitUrl, masterCoverage);

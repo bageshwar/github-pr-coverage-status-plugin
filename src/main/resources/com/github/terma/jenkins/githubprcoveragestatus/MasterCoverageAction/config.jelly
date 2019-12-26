@@ -9,4 +9,8 @@
             <f:option value="CLASS">${%Class}</f:option>
           </select>
         </f:entry>
+
+        <f:entry title="${%Sonarqube Style Coverage}" field="useSonarStyleCoverage">
+              <f:checkbox />
+        </f:entry>
 </j:jelly>

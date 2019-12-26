@@ -21,8 +21,12 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+
+import static com.github.terma.jenkins.githubprcoveragestatus.CompareCoverageAction.BUILD_LOG_PREFIX;
 
 /*
 <counter type="INSTRUCTION" missed="1" covered="4"/>
@@ -42,9 +46,13 @@ class JacocoParser implements CoverageReportParser {
     }};
 
     private String coverageCounterType = "";
+    private boolean useSonarStyleCoverage;
+    private OutputStream buildLog;
 
-    public JacocoParser(String coverageCounterType) {
+    public JacocoParser(OutputStream buildLog, String coverageCounterType, boolean useSonarStyleCoverage) {
+        this.buildLog = buildLog;
         this.coverageCounterType = coverageCounterType;
+        this.useSonarStyleCoverage = useSonarStyleCoverage;
     }
 
     private float getByXpath(final String filePath, final String content, final String xpath) {
@@ -56,6 +64,14 @@ class JacocoParser implements CoverageReportParser {
                             "File path: " + filePath + "\n" +
                             "Can't extract float value by XPath: " + xpath + "\n" +
                             "from:\n" + content);
+        }
+    }
+
+    private float getByXpathWithDefault(final String filePath, final String content, final String xpath) {
+        try {
+            return Float.parseFloat(XmlUtils.findInXml(content, xpath));
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 
@@ -73,6 +89,14 @@ class JacocoParser implements CoverageReportParser {
             coverageCounterType = coverageCounters.get(0);
         }
 
+        if(useSonarStyleCoverage){
+            return getSonarAlignedCoverage(jacocoFilePath, content);
+        } else {
+            return getCoverage(jacocoFilePath, content);
+        }
+    }
+
+    private float getCoverage(final String jacocoFilePath, final String content){
         final float missed = getByXpath(jacocoFilePath, content, getMissedXpath(coverageCounterType));
         final float covered = getByXpath(jacocoFilePath,content, getCoverageXpath(coverageCounterType));
         final float coverage = covered + missed;
@@ -81,6 +105,38 @@ class JacocoParser implements CoverageReportParser {
         } else {
             return covered / (coverage);
         }
+    }
+
+    private float getSonarAlignedCoverage(final String jacocoFilePath, final String content){
+
+        /**
+         * From SONAR Documentation
+         * Coverage = (CT + CF + LC)/(B + EL)
+         * where
+         *
+         * CT = conditions that have been evaluated to 'true' at least once
+         * CF = conditions that have been evaluated to 'false' at least once
+         * LC = covered lines = linestocover - uncovered_lines
+         * B = total number of conditions
+         * EL = total number of executable lines (lines_to_cover)
+         *
+         */
+
+        log(BUILD_LOG_PREFIX + " Reading from file " + jacocoFilePath);
+
+        float linesMissed = getByXpathWithDefault(jacocoFilePath, content, getMissedXpath("line"));
+        float linesCovered = getByXpathWithDefault(jacocoFilePath, content, getCoverageXpath("line"));
+
+        float branchMissed = getByXpathWithDefault(jacocoFilePath, content, getMissedXpath("branch"));
+        float branchCovered = getByXpathWithDefault(jacocoFilePath, content, getCoverageXpath("branch"));
+
+        float B = branchMissed + branchCovered;
+        float EL = linesCovered + linesMissed;
+        float LC = linesCovered;
+        float CT = branchCovered;
+        float CF = branchCovered;
+
+        return (CT + CF + LC)/(B + EL);
     }
 
     private boolean isValidCoverageCounter(String coverageCounter) {
@@ -101,5 +157,14 @@ class JacocoParser implements CoverageReportParser {
 
     private String getCoverageXpath(String counterType) {
         return "/report/counter[@type='" + counterType.toUpperCase() + "']/@covered";
+    }
+
+    private void log(String message){
+        try {
+            buildLog.write(message.getBytes(StandardCharsets.UTF_8));
+            buildLog.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

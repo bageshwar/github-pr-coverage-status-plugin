@@ -21,15 +21,19 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 public class JacocoParserTest {
+
+    private boolean useSonarStyleCoverage = false;
+    private OutputStream buildLog = System.out;
 
     @Test
     public void extractCoverageFromJacocoReport() throws IOException {
         String filePath = JacocoParserTest.class.getResource(
                 "/com/github/terma/jenkins/githubprcoveragestatus/JacocoParserTest/jacoco.xml").getFile();
 
-        Assert.assertEquals(0.22, new JacocoParser("LINE").get(filePath), 0.1);
+        Assert.assertEquals(0.22, new JacocoParser(buildLog, "LINE", useSonarStyleCoverage).get(filePath), 0.1);
     }
 
     @Test
@@ -37,7 +41,7 @@ public class JacocoParserTest {
         String filePath = JacocoParserTest.class.getResource(
                 "/com/github/terma/jenkins/githubprcoveragestatus/JacocoParserTest/jacoco-no-code.xml").getFile();
 
-        Assert.assertEquals(0, new JacocoParser("LINE").get(filePath), 0.1);
+        Assert.assertEquals(0, new JacocoParser(buildLog, "LINE", useSonarStyleCoverage).get(filePath), 0.1);
     }
 
     @Test
@@ -45,7 +49,7 @@ public class JacocoParserTest {
         String filePath = JacocoParserTest.class.getResource(
                 "/com/github/terma/jenkins/githubprcoveragestatus/JacocoParserTest/jacoco.xml").getFile();
 
-        Assert.assertEquals(0.22, new JacocoParser(null).get(filePath), 0.1);
+        Assert.assertEquals(0.22, new JacocoParser(buildLog, null, useSonarStyleCoverage).get(filePath), 0.1);
     }
 
     @Test
@@ -53,7 +57,7 @@ public class JacocoParserTest {
         String filePath = JacocoParserTest.class.getResource(
                 "/com/github/terma/jenkins/githubprcoveragestatus/JacocoParserTest/jacoco.xml").getFile();
 
-        Assert.assertEquals(0.22, new JacocoParser("random").get(filePath), 0.1);
+        Assert.assertEquals(0.22, new JacocoParser(buildLog, "random", useSonarStyleCoverage).get(filePath), 0.1);
     }
 
     @Test
@@ -62,7 +66,7 @@ public class JacocoParserTest {
                 "/com/github/terma/jenkins/githubprcoveragestatus/JacocoParserTest/jacoco-no-line-tag.xml").getFile();
 
         try {
-            new JacocoParser("LINE").get(filePath);
+            new JacocoParser(buildLog, "LINE", useSonarStyleCoverage).get(filePath);
             Assert.fail("Where is my exception?");
         } catch (Exception e) {
             String messageWithoutAbsolutePath = e.getMessage().replace(filePath, "FILE_PATH");
@@ -85,7 +89,7 @@ public class JacocoParserTest {
                 "/com/github/terma/jenkins/githubprcoveragestatus/JacocoParserTest/jacoco-missed-not-number.xml").getFile();
 
         try {
-            new JacocoParser("LINE").get(filePath);
+            new JacocoParser(buildLog, "LINE", useSonarStyleCoverage).get(filePath);
             Assert.fail("Where is my exception?");
         } catch (Exception e) {
             String messageWithoutAbsolutePath = e.getMessage().replace(filePath, "FILE_PATH");
@@ -109,7 +113,7 @@ public class JacocoParserTest {
                 "/com/github/terma/jenkins/githubprcoveragestatus/JacocoParserTest/jacoco-covered-not-number.xml").getFile();
 
         try {
-            new JacocoParser("LINE").get(filePath);
+            new JacocoParser(buildLog, "LINE", useSonarStyleCoverage).get(filePath);
             Assert.fail("Where is my exception?");
         } catch (Exception e) {
             String messageWithoutAbsolutePath = e.getMessage().replace(filePath, "FILE_PATH");
@@ -130,7 +134,7 @@ public class JacocoParserTest {
     @Test
     public void throwExceptionWhenExtractCoverageFromJacocoAndNoFile() throws IOException {
         try {
-            new JacocoParser("LINE").get("/jacoco-no-file.xml");
+            new JacocoParser(buildLog, "LINE", useSonarStyleCoverage).get("/jacoco-no-file.xml");
             Assert.fail("Where is my exception?");
         } catch (Exception e) {
             Assert.assertEquals("Can't read Jacoco report by path: /jacoco-no-file.xml", e.getMessage());
