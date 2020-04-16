@@ -21,4 +21,12 @@ interface CoverageReportParser {
 
     float get(String filePath);
 
+    default boolean isAggregator(){
+        return false;
+    }
+
+    default float aggregate(){
+        return 0;
+    }
+
 }

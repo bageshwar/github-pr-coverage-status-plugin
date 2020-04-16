@@ -53,7 +53,14 @@ final class GetCoverageCallable extends MasterToSlaveFileCallable<Float> impleme
         String[] files = ds.getIncludedFiles();
         List<Float> cov = new ArrayList<Float>();
         for (String file : files) {
-            cov.add(parser.get(new File(ds.getBasedir(), file).getAbsolutePath()));
+            float coverage = parser.get(new File(ds.getBasedir(), file).getAbsolutePath());
+            if(!parser.isAggregator()){
+                cov.add(coverage);
+            }
+        }
+
+        if(files.length != 0 && parser.isAggregator()){
+            cov.add(parser.aggregate());
         }
         return cov;
     }

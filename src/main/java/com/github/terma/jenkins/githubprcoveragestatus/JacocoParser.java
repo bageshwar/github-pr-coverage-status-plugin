@@ -36,6 +36,7 @@ import static com.github.terma.jenkins.githubprcoveragestatus.CompareCoverageAct
     <counter type="CLASS" missed="0" covered="1"/>
  */
 class JacocoParser implements CoverageReportParser {
+    private float linesMissed, linesCovered, branchMissed, branchCovered;
 
     private List<String> coverageCounters = new ArrayList<String>() {{
         add("instruction");
@@ -53,6 +54,38 @@ class JacocoParser implements CoverageReportParser {
         this.buildLog = buildLog;
         this.coverageCounterType = coverageCounterType;
         this.useSonarStyleCoverage = useSonarStyleCoverage;
+    }
+
+    @Override
+    public boolean isAggregator() {
+        return useSonarStyleCoverage;
+    }
+
+    @Override
+    public float aggregate() {
+        /**
+         * From SONAR Documentation
+         * Coverage = (CT + CF + LC)/(B + EL)
+         * where
+         *
+         * CT = conditions that have been evaluated to 'true' at least once
+         * CF = conditions that have been evaluated to 'false' at least once
+         * LC = covered lines = linestocover - uncovered_lines
+         * B = total number of conditions
+         * EL = total number of executable lines (lines_to_cover)
+         *
+         */
+        float B = branchMissed + branchCovered;
+        float EL = linesCovered + linesMissed;
+        float LC = linesCovered;
+        float CT_F = branchCovered;
+
+        float coverage = (CT_F + LC)/(B + EL);
+        if(Float.isNaN(coverage)){
+            coverage = 0;
+        }
+        log("Branch Coverage is: " + coverage);
+        return coverage;
     }
 
     private float getByXpath(final String filePath, final String content, final String xpath) {
@@ -109,34 +142,15 @@ class JacocoParser implements CoverageReportParser {
 
     private float getSonarAlignedCoverage(final String jacocoFilePath, final String content){
 
-        /**
-         * From SONAR Documentation
-         * Coverage = (CT + CF + LC)/(B + EL)
-         * where
-         *
-         * CT = conditions that have been evaluated to 'true' at least once
-         * CF = conditions that have been evaluated to 'false' at least once
-         * LC = covered lines = linestocover - uncovered_lines
-         * B = total number of conditions
-         * EL = total number of executable lines (lines_to_cover)
-         *
-         */
-
         log(BUILD_LOG_PREFIX + " Reading from file " + jacocoFilePath);
 
-        float linesMissed = getByXpathWithDefault(jacocoFilePath, content, getMissedXpath("line"));
-        float linesCovered = getByXpathWithDefault(jacocoFilePath, content, getCoverageXpath("line"));
+        linesMissed += getByXpathWithDefault(jacocoFilePath, content, getMissedXpath("line"));
+        linesCovered += getByXpathWithDefault(jacocoFilePath, content, getCoverageXpath("line"));
 
-        float branchMissed = getByXpathWithDefault(jacocoFilePath, content, getMissedXpath("branch"));
-        float branchCovered = getByXpathWithDefault(jacocoFilePath, content, getCoverageXpath("branch"));
+        branchMissed += getByXpathWithDefault(jacocoFilePath, content, getMissedXpath("branch"));
+        branchCovered += getByXpathWithDefault(jacocoFilePath, content, getCoverageXpath("branch"));
 
-        float B = branchMissed + branchCovered;
-        float EL = linesCovered + linesMissed;
-        float LC = linesCovered;
-        float CT = branchCovered;
-        float CF = branchCovered;
-
-        return (CT + CF + LC)/(B + EL);
+        return 0;
     }
 
     private boolean isValidCoverageCounter(String coverageCounter) {
@@ -161,7 +175,7 @@ class JacocoParser implements CoverageReportParser {
 
     private void log(String message){
         try {
-            buildLog.write(message.getBytes(StandardCharsets.UTF_8));
+            buildLog.write((message + "\r\n").getBytes(StandardCharsets.UTF_8));
             buildLog.flush();
         } catch (IOException e) {
             e.printStackTrace();
